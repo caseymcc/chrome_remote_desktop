@@ -1,0 +1,47 @@
+--- chrome-remote-desktop	2025-02-01 10:33:03.102391215 -0600
++++ chrome-remote-desktop	2025-02-01 10:36:01.547632022 -0600
+@@ -74,7 +74,7 @@
+ # with large or multiple monitors. This is a comma-separated list of
+ # resolutions that will be made available if the X server supports RANDR. These
+ # defaults can be overridden in ~/.profile.
+-DEFAULT_SIZES = "1600x1200,3840x2560"
++DEFAULT_SIZES = "1920x1280"
+ 
+ # Decides number of monitors and their resolution that should be run for the
+ # wayland session.
+@@ -738,16 +738,32 @@
+       return True
+     return False
+ 
++  def get_display_from_who(self):
++    try:
++        output = subprocess.check_output("who | grep '(:' | awk '{print $5}' | tr -d '()' | cut -c 2-", shell=True)
++        display = output.decode().strip()
++        
++        if display:
++            return int(display)
++        return 0
++    except subprocess.CalledProcessError as e:
++        print(f"Error running 'who': {e}")
++        return 0
++
+   def launch_session(self, server_args, backoff_time):
+     """Launches process required for session and records the backoff time
+     for inhibitors so that process restarts are not attempted again until
+     that time has passed."""
+     logging.info("Setting up and launching session")
+     self._setup_gnubby()
+-    self._launch_server(server_args)
+-    if not self._launch_pre_session():
++
++    display = self.get_display_from_who()
++    self.child_env["DISPLAY"]=":%d" % display
++    self.child_env["WAYLAND_DISPLAY"]=":%d" % display
++#    self._launch_server(server_args)
++#    if not self._launch_pre_session():
+       # If there was no pre-session script, launch the session immediately.
+-      self.launch_desktop_session()
++#      self.launch_desktop_session()
+     self.server_inhibitor.record_started(MINIMUM_PROCESS_LIFETIME,
+                                       backoff_time)
+     self.session_inhibitor.record_started(MINIMUM_PROCESS_LIFETIME,
